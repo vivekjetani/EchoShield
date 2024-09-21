@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Speech to Text Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: center;
+        }
+        #container {
+            width: 90%;
+            margin: 0 auto;
+        }
+        #output {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            font-size: 1.2em;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+
+        /* Media Query for smaller mobile screens */
+        @media (max-width: 600px) {
+            button {
+                font-size: 1.1em;
+                padding: 12px;
+            }
+            #output {
+                height: 120px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Mobile Speech to Text</h1>
+        <button id="start-btn">Start Listening</button>
+        <button id="stop-btn" disabled>Stop Listening</button>
+        <div id="output" contenteditable="true">Your speech will appear here...</div>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const output = document.getElementById('output');
+    
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = true;
+        recognition.continuous = true;
+    
+        recognition.onstart = function() {
+            output.textContent = 'Listening...';
+        };
+    
+        recognition.onresult = function(event) {
+            const transcript = Array.from(event.results)
+                .map(result => result[0])
+                .map(result => result.transcript)
+                .join('');
+    
+            output.textContent = transcript;
+    
+            // Check for keywords
+            if (transcript.toLowerCase().includes('help') || transcript.toLowerCase().includes('danger')) {
+                sendSignalToESP32();
+            }
+        };
+    
+        recognition.onerror = function(event) {
+            output.textContent = 'Error: ' + event.error;
+        };
+    
+        recognition.onend = function() {
+            if (!stopBtn.disabled) {
+                recognition.start();
+            }
+        };
+    
+        startBtn.addEventListener('click', () => {
+            recognition.start();
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+        });
+    
+        stopBtn.addEventListener('click', () => {
+            recognition.stop();
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        });
+    
+        function sendSignalToESP32() {
+            fetch('http://192.168.36.252/signal', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    console.log('Signal sent to ESP32');
+                })
+                .catch(error => {
+                    console.error('There was a problem with the fetch operation:', error);
+                });
+        }
+    </script>
+    
+</body>
+</html>
