@@ -119,6 +119,7 @@
         });
     
         function sendSignalToESP32() {
+                        /* Change the IP Address */
             fetch('http://192.168.36.252/signal', { method: 'POST' })
                 .then(response => {
                     if (!response.ok) {
